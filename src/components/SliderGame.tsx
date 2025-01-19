@@ -30,7 +30,10 @@ export const SliderGame = ({ roomCode, onComplete }: SliderGameProps) => {
         (payload) => {
           const updatedRoom = payload.new as Room;
           if (updatedRoom.player1_answer !== null && updatedRoom.player2_answer !== null) {
-            const score = calculateScore(updatedRoom.player1_answer, updatedRoom.player2_answer);
+            const score = calculateScore(
+              Number(updatedRoom.player1_answer), 
+              Number(updatedRoom.player2_answer)
+            );
             setBothSubmitted(true);
             setTimeout(() => onComplete(score), 1000);
           }

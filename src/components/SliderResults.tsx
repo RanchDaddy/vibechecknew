@@ -26,8 +26,8 @@ export const SliderResults = ({ score, roomCode, onRestart }: SliderResultsProps
         .single();
 
       if (room) {
-        setPlayer1Answer(room.player1_answer);
-        setPlayer2Answer(room.player2_answer);
+        setPlayer1Answer(Number(room.player1_answer));
+        setPlayer2Answer(Number(room.player2_answer));
       }
     };
 
