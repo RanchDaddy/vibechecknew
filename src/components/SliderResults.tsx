@@ -19,41 +19,6 @@ export const SliderResults = ({ score, roomCode, onRestart }: SliderResultsProps
   const [finalScore, setFinalScore] = useState(score);
 
   useEffect(() => {
-    const channel = supabase
-      .channel('results_updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'rooms',
-          filter: `code=eq.${roomCode}`,
-        },
-        (payload) => {
-          const updatedRoom = payload.new as any;
-          if (updatedRoom.player1_answer !== null && updatedRoom.player2_answer !== null) {
-            setPlayer1Answer(Number(updatedRoom.player1_answer));
-            setPlayer2Answer(Number(updatedRoom.player2_answer));
-            const calculatedScore = calculateScore(
-              Number(updatedRoom.player1_answer),
-              Number(updatedRoom.player2_answer)
-            );
-            setFinalScore(calculatedScore);
-            setIsAnalyzing(false);
-            setShowScore(true);
-            // Trigger confetti after score appears
-            setTimeout(() => {
-              confetti({
-                particleCount: 100,
-                spread: 70,
-                origin: { y: 0.6 }
-              });
-            }, 500);
-          }
-        }
-      )
-      .subscribe();
-
     // Check initial state
     const checkInitialState = async () => {
       const { data: room } = await supabase
@@ -84,8 +49,43 @@ export const SliderResults = ({ score, roomCode, onRestart }: SliderResultsProps
 
     checkInitialState();
 
+    // Set up realtime subscription
+    const channel = supabase.channel(`room:${roomCode}`);
+    
+    channel
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'rooms',
+        filter: `code=eq.${roomCode}`,
+      }, (payload) => {
+        console.log('Received update:', payload);
+        const updatedRoom = payload.new as any;
+        
+        if (updatedRoom.player1_answer !== null && updatedRoom.player2_answer !== null) {
+          console.log('Both answers received:', updatedRoom);
+          setPlayer1Answer(Number(updatedRoom.player1_answer));
+          setPlayer2Answer(Number(updatedRoom.player2_answer));
+          const calculatedScore = calculateScore(
+            Number(updatedRoom.player1_answer),
+            Number(updatedRoom.player2_answer)
+          );
+          setFinalScore(calculatedScore);
+          setIsAnalyzing(false);
+          setShowScore(true);
+          setTimeout(() => {
+            confetti({
+              particleCount: 100,
+              spread: 70,
+              origin: { y: 0.6 }
+            });
+          }, 500);
+        }
+      })
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      channel.unsubscribe();
     };
   }, [roomCode]);
 
