@@ -48,8 +48,8 @@ export const RoomJoin = ({ onJoinRoom }: RoomJoinProps) => {
     }
   };
 
-  const handleJoinRoom = async () => {
-    if (!roomCode.trim()) {
+  const handleJoinRoom = async (codeToJoin: string) => {
+    if (!codeToJoin.trim()) {
       toast({
         title: "Error",
         description: "Invalid room code",
@@ -60,26 +60,26 @@ export const RoomJoin = ({ onJoinRoom }: RoomJoinProps) => {
 
     setIsLoading(true);
     try {
-      const { data: existingRoom } = await supabase
+      const { data: existingRoom, error: fetchError } = await supabase
         .from('rooms')
         .select('*')
-        .eq('code', roomCode)
+        .eq('code', codeToJoin)
         .single();
+
+      if (fetchError) throw new Error('Room not found');
 
       if (existingRoom) {
         if (!existingRoom.player2_id) {
           const { error: updateError } = await supabase
             .from('rooms')
             .update({ player2_id: crypto.randomUUID() })
-            .eq('code', roomCode);
+            .eq('code', codeToJoin);
 
           if (updateError) throw updateError;
-          onJoinRoom(roomCode);
+          onJoinRoom(codeToJoin);
         } else {
           throw new Error('Room is full');
         }
-      } else {
-        throw new Error('Room not found');
       }
     } catch (error) {
       console.error('Error joining room:', error);
@@ -103,8 +103,8 @@ export const RoomJoin = ({ onJoinRoom }: RoomJoinProps) => {
     const roomFromQR = params.get('room');
     
     if (roomFromQR) {
-      setRoomCode(roomFromQR);
-      handleJoinRoom();
+      console.log('Joining room from QR code:', roomFromQR);
+      handleJoinRoom(roomFromQR);
     }
   }, []);
 
