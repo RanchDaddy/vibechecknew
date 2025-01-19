@@ -33,6 +33,42 @@ export type Database = {
         }
         Relationships: []
       }
+      rooms: {
+        Row: {
+          code: string
+          created_at: string
+          current_question: number | null
+          id: string
+          player1_answer: string | null
+          player1_id: string | null
+          player2_answer: string | null
+          player2_id: string | null
+          status: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          current_question?: number | null
+          id?: string
+          player1_answer?: string | null
+          player1_id?: string | null
+          player2_answer?: string | null
+          player2_id?: string | null
+          status?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          current_question?: number | null
+          id?: string
+          player1_answer?: string | null
+          player1_id?: string | null
+          player2_answer?: string | null
+          player2_id?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

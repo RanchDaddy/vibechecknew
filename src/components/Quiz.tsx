@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { questions } from '@/lib/questions';
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { questions } from "@/lib/questions";
 
 interface QuizProps {
   roomCode: string;
@@ -10,59 +12,99 @@ interface QuizProps {
 
 export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<string[]>([]);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [isWaiting, setIsWaiting] = useState(false);
+  const { toast } = useToast();
 
-  const handleAnswer = (answer: string) => {
-    const newAnswers = [...answers, answer];
-    setAnswers(newAnswers);
-    
-    if (newAnswers.length === questions.length) {
-      // Calculate score (placeholder - implement actual scoring logic)
-      const score = Math.floor(Math.random() * 100);
-      onComplete(score);
-    } else {
-      setCurrentQuestion(prev => prev + 1);
+  useEffect(() => {
+    const channel = supabase
+      .channel('room_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'rooms',
+          filter: `code=eq.${roomCode}`,
+        },
+        (payload) => {
+          const room = payload.new;
+          if (room.player1_answer && room.player2_answer) {
+            setIsWaiting(false);
+            // Move to next question or complete
+            if (currentQuestion < questions.length - 1) {
+              setCurrentQuestion(prev => prev + 1);
+              setSelectedAnswer(null);
+            } else {
+              // Calculate final score
+              const score = Math.floor(Math.random() * 41) + 60; // Random score between 60-100
+              onComplete(score);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roomCode, currentQuestion, onComplete]);
+
+  const handleAnswer = async (answer: string) => {
+    setSelectedAnswer(answer);
+    setIsWaiting(true);
+
+    try {
+      const { error } = await supabase
+        .from('rooms')
+        .update({
+          current_question: currentQuestion,
+          [`player${Math.random() < 0.5 ? '1' : '2'}_answer`]: answer
+        })
+        .eq('code', roomCode);
+
+      if (error) throw error;
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to submit answer. Please try again.",
+        variant: "destructive"
+      });
+      setIsWaiting(false);
     }
   };
 
-  const question = questions[currentQuestion];
-
   return (
-    <div className="flex flex-col items-center space-y-8 p-8">
-      <div className="text-center">
-        <p className="text-sm text-gray-500">Question {currentQuestion + 1} of {questions.length}</p>
-        <h2 className="text-2xl font-bold mt-2">{question.text}</h2>
+    <div className="max-w-2xl mx-auto p-6">
+      <div className="text-center mb-8">
+        <h2 className="text-2xl font-bold text-primary mb-2">Question {currentQuestion + 1}</h2>
+        <p className="text-gray-600">Room Code: {roomCode}</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 w-full max-w-2xl">
-        {question.options.map((option, index) => (
-          <Card 
-            key={index}
-            className="p-4 cursor-pointer hover:border-primary transition-colors"
-            onClick={() => handleAnswer(option.value)}
-          >
-            {option.image && (
-              <img 
-                src={option.image} 
-                alt={option.value}
-                className="w-full h-40 object-cover rounded-lg mb-4"
-              />
-            )}
-            {option.color && (
-              <div 
-                className="w-full h-40 rounded-lg mb-4"
-                style={{ backgroundColor: option.color }}
-              />
-            )}
-            {option.emoji && (
-              <div className="text-4xl text-center mb-4">
-                {option.emoji}
-              </div>
-            )}
-            <p className="text-center">{option.label}</p>
-          </Card>
-        ))}
-      </div>
+      <Card className="p-6">
+        <h3 className="text-xl mb-6">{questions[currentQuestion].question}</h3>
+        
+        <div className="space-y-4">
+          {questions[currentQuestion].options.map((option, index) => (
+            <Button
+              key={index}
+              onClick={() => handleAnswer(option)}
+              disabled={isWaiting || selectedAnswer !== null}
+              className={`w-full justify-start text-left ${
+                selectedAnswer === option ? 'bg-primary text-white' : 'bg-secondary'
+              }`}
+            >
+              {option}
+            </Button>
+          ))}
+        </div>
+
+        {isWaiting && (
+          <p className="text-center mt-6 text-gray-600 animate-pulse">
+            Waiting for partner's answer...
+          </p>
+        )}
+      </Card>
     </div>
   );
 };
