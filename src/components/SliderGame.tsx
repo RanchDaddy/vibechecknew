@@ -14,57 +14,6 @@ interface SliderGameProps {
 export const SliderGame = ({ roomCode, onComplete }: SliderGameProps) => {
   const [sliderValue, setSliderValue] = useState([50]);
   const [hasSubmitted, setHasSubmitted] = useState(false);
-  const [bothSubmitted, setBothSubmitted] = useState(false);
-
-  useEffect(() => {
-    const channel = supabase
-      .channel('slider_updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'rooms',
-          filter: `code=eq.${roomCode}`,
-        },
-        (payload) => {
-          const updatedRoom = payload.new as Room;
-          if (updatedRoom.player1_answer !== null && updatedRoom.player2_answer !== null) {
-            const score = calculateScore(
-              Number(updatedRoom.player1_answer), 
-              Number(updatedRoom.player2_answer)
-            );
-            setBothSubmitted(true);
-            setTimeout(() => onComplete(score), 1000);
-          }
-        }
-      )
-      .subscribe();
-
-    // Check initial state in case both answers are already submitted
-    const checkInitialState = async () => {
-      const { data: room } = await supabase
-        .from('rooms')
-        .select('*')
-        .eq('code', roomCode)
-        .single();
-
-      if (room && room.player1_answer !== null && room.player2_answer !== null) {
-        const score = calculateScore(
-          Number(room.player1_answer),
-          Number(room.player2_answer)
-        );
-        setBothSubmitted(true);
-        setTimeout(() => onComplete(score), 1000);
-      }
-    };
-
-    checkInitialState();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [roomCode, onComplete]);
 
   const calculateScore = (answer1: number, answer2: number) => {
     const difference = Math.abs(answer1 - answer2);
@@ -90,6 +39,9 @@ export const SliderGame = ({ roomCode, onComplete }: SliderGameProps) => {
         .update({ [updateField]: sliderValue[0] })
         .eq('code', roomCode);
 
+      // Immediately transition to results screen with a temporary score of 0
+      // The actual score will be updated when both players have submitted
+      onComplete(0);
       setHasSubmitted(true);
     } catch (error) {
       console.error('Error submitting answer:', error);
@@ -124,7 +76,7 @@ export const SliderGame = ({ roomCode, onComplete }: SliderGameProps) => {
           </Button>
         ) : (
           <p className="text-center text-gray-600">
-            {bothSubmitted ? "Calculating results..." : "Waiting for other player..."}
+            Answer submitted
           </p>
         )}
       </div>
