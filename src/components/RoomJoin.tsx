@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { QRCodeSVG } from 'qrcode.react';
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface RoomJoinProps {
   onJoinRoom: (code: string) => void;
@@ -9,7 +11,77 @@ interface RoomJoinProps {
 
 export const RoomJoin = ({ onJoinRoom }: RoomJoinProps) => {
   const [roomCode, setRoomCode] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const currentUrl = window.location.href;
+  const { toast } = useToast();
+
+  const handleJoinRoom = async () => {
+    if (!roomCode.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a room code",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // First check if room exists
+      const { data: existingRoom } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('code', roomCode)
+        .single();
+
+      if (existingRoom) {
+        // Room exists, try to join as player 2 if spot is available
+        if (!existingRoom.player2_id) {
+          const { error: updateError } = await supabase
+            .from('rooms')
+            .update({ player2_id: crypto.randomUUID() })
+            .eq('code', roomCode);
+
+          if (updateError) throw updateError;
+        } else if (!existingRoom.player1_id) {
+          // In case player2 somehow got set but player1 didn't
+          const { error: updateError } = await supabase
+            .from('rooms')
+            .update({ player1_id: crypto.randomUUID() })
+            .eq('code', roomCode);
+
+          if (updateError) throw updateError;
+        } else {
+          throw new Error('Room is full');
+        }
+      } else {
+        // Create new room as player 1
+        const { error: createError } = await supabase
+          .from('rooms')
+          .insert([
+            {
+              code: roomCode,
+              player1_id: crypto.randomUUID(),
+              current_question: 0,
+              status: 'waiting'
+            }
+          ]);
+
+        if (createError) throw createError;
+      }
+
+      onJoinRoom(roomCode);
+    } catch (error) {
+      console.error('Error joining room:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to join room",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col items-center space-y-8 p-8">
@@ -34,9 +106,10 @@ export const RoomJoin = ({ onJoinRoom }: RoomJoinProps) => {
         />
         <Button 
           className="w-full bg-primary hover:bg-primary/90"
-          onClick={() => onJoinRoom(roomCode)}
+          onClick={handleJoinRoom}
+          disabled={isLoading}
         >
-          Join Room
+          {isLoading ? "Joining..." : "Join Room"}
         </Button>
       </div>
     </div>

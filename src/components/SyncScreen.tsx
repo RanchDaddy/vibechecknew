@@ -17,6 +17,22 @@ export const SyncScreen = ({ roomCode, onSynced }: SyncScreenProps) => {
   const [showButton, setShowButton] = useState(false);
 
   useEffect(() => {
+    // First check if room is already synced
+    const checkInitialState = async () => {
+      const { data: room } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('code', roomCode)
+        .single();
+
+      if (room && room.player1_id && room.player2_id) {
+        setIsSynced(true);
+        setTimeout(() => setShowButton(true), 2000);
+      }
+    };
+
+    checkInitialState();
+
     const channel = supabase
       .channel('room_sync')
       .on(
@@ -28,13 +44,10 @@ export const SyncScreen = ({ roomCode, onSynced }: SyncScreenProps) => {
           filter: `code=eq.${roomCode}`,
         },
         (payload: RealtimePostgresChangesPayload<Room>) => {
-          const newRoom = payload.new as Room;
-          // Add null check before accessing properties
-          if (newRoom && typeof newRoom === 'object' && 'player1_id' in newRoom && 'player2_id' in newRoom) {
-            if (newRoom.player1_id && newRoom.player2_id) {
-              setIsSynced(true);
-              setTimeout(() => setShowButton(true), 2000); // Show button after animation
-            }
+          const newRoom = payload.new;
+          if (newRoom && newRoom.player1_id && newRoom.player2_id) {
+            setIsSynced(true);
+            setTimeout(() => setShowButton(true), 2000);
           }
         }
       )
@@ -48,8 +61,14 @@ export const SyncScreen = ({ roomCode, onSynced }: SyncScreenProps) => {
   return (
     <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-8">
       <div className="text-center space-y-4">
-        <h2 className="text-2xl font-bold text-primary">Syncing with your partner...</h2>
-        <p className="text-gray-600">Please wait while we establish the connection</p>
+        <h2 className="text-2xl font-bold text-primary">
+          {isSynced ? "Ready to begin!" : "Waiting for partner..."}
+        </h2>
+        <p className="text-gray-600">
+          {isSynced 
+            ? "Both players are connected" 
+            : "Please wait while your partner joins the room"}
+        </p>
       </div>
 
       <div className={`transition-all duration-1000 ${isSynced ? 'scale-110' : 'scale-90'}`}>

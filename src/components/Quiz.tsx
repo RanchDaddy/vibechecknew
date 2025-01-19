@@ -36,20 +36,20 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
           filter: `code=eq.${roomCode}`,
         },
         (payload: RealtimePostgresChangesPayload<Room>) => {
-          const newRoom = payload.new as Room;
+          const newRoom = payload.new;
           if (!newRoom) return;
 
-          // Check if both players have answered
-          if (
-            newRoom.player1_answer !== null && 
-            newRoom.player2_answer !== null
-          ) {
+          // Update current question if it changed
+          if (newRoom.current_question !== currentQuestion) {
+            setCurrentQuestion(newRoom.current_question || 0);
+            setSelectedAnswer(null);
             setIsWaiting(false);
-            if (currentQuestion < questions.length - 1) {
-              setCurrentQuestion(prev => prev + 1);
-              setSelectedAnswer(null);
+          }
 
-              // Reset answers for next question
+          // Check if both players have answered
+          if (newRoom.player1_answer && newRoom.player2_answer) {
+            if (currentQuestion < questions.length - 1) {
+              // Move to next question
               const updateRoom = async () => {
                 const { error } = await supabase
                   .from('rooms')
@@ -70,6 +70,7 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
               };
               updateRoom();
             } else {
+              // Quiz complete
               const score = Math.floor(Math.random() * 41) + 60;
               onComplete(score);
             }
@@ -84,15 +85,28 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
   }, [roomCode, currentQuestion, onComplete, isSynced, toast]);
 
   const handleAnswer = async (answer: string) => {
+    if (isWaiting) return;
+    
     setSelectedAnswer(answer);
     setIsWaiting(true);
 
     try {
+      // Get current room state to determine which player we are
+      const { data: room } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('code', roomCode)
+        .single();
+
+      if (!room) throw new Error('Room not found');
+
+      // Determine if we're player 1 or 2 based on who answered first
+      const isPlayer1 = !room.player1_answer;
+      
       const { error } = await supabase
         .from('rooms')
         .update({
-          current_question: currentQuestion,
-          [`player${Math.random() < 0.5 ? '1' : '2'}_answer`]: answer
+          [`player${isPlayer1 ? '1' : '2'}_answer`]: answer
         })
         .eq('code', roomCode);
 
@@ -104,6 +118,7 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
         variant: "destructive"
       });
       setIsWaiting(false);
+      setSelectedAnswer(null);
     }
   };
 
