@@ -24,91 +24,84 @@ export const SliderResults = ({ score, roomCode, onRestart }: SliderResultsProps
     return Math.round(100 * (1 - difference / maxDifference));
   };
 
-  const handleRoomUpdate = (room: any) => {
-    console.log('Processing room update:', room);
-    if (room.player1_answer !== null && room.player2_answer !== null) {
-      console.log('Both answers present:', room.player1_answer, room.player2_answer);
-      setPlayer1Answer(Number(room.player1_answer));
-      setPlayer2Answer(Number(room.player2_answer));
-      const calculatedScore = calculateScore(
-        Number(room.player1_answer),
-        Number(room.player2_answer)
-      );
-      setFinalScore(calculatedScore);
-      setIsAnalyzing(false);
-      setShowScore(true);
-      setTimeout(() => {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-      }, 500);
-    }
-  };
-
   useEffect(() => {
-    console.log('Setting up subscription for room:', roomCode);
+    console.log('Setting up room monitoring for:', roomCode);
     
-    // Check initial state immediately
-    const checkInitialState = async () => {
-      try {
-        const { data: room, error } = await supabase
-          .from('rooms')
-          .select('*')
-          .eq('code', roomCode)
-          .single();
-
-        if (error) {
-          console.error('Error fetching initial room state:', error);
-          return;
-        }
-
-        console.log('Initial room state:', room);
-        if (room) {
-          handleRoomUpdate(room);
-        }
-      } catch (error) {
-        console.error('Error in checkInitialState:', error);
-      }
-    };
-
-    checkInitialState();
-
-    // Set up realtime subscription
-    const channel = supabase.channel(`room_${roomCode}`);
-    
-    channel
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'rooms',
-        filter: `code=eq.${roomCode}`,
-      }, (payload) => {
-        console.log('Received realtime update:', payload);
-        if (payload.new) {
-          handleRoomUpdate(payload.new);
-        }
-      })
-      .subscribe((status) => {
-        console.log('Subscription status:', status);
-      });
-
-    // Poll for updates as a backup mechanism
-    const pollInterval = setInterval(async () => {
+    const checkRoomState = async () => {
       const { data: room } = await supabase
         .from('rooms')
         .select('*')
         .eq('code', roomCode)
         .single();
+
+      console.log('Current room state:', room);
       
-      if (room) {
-        handleRoomUpdate(room);
+      if (room && room.player1_answer !== null && room.player2_answer !== null) {
+        console.log('Both answers present:', room.player1_answer, room.player2_answer);
+        setPlayer1Answer(Number(room.player1_answer));
+        setPlayer2Answer(Number(room.player2_answer));
+        const calculatedScore = calculateScore(
+          Number(room.player1_answer),
+          Number(room.player2_answer)
+        );
+        setFinalScore(calculatedScore);
+        setIsAnalyzing(false);
+        setShowScore(true);
+        setTimeout(() => {
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+        }, 500);
       }
-    }, 2000); // Poll every 2 seconds
+    };
+
+    // Check initial state
+    checkRoomState();
+
+    // Set up subscription
+    const channel = supabase
+      .channel('room_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'rooms',
+          filter: `code=eq.${roomCode}`,
+        },
+        (payload) => {
+          console.log('Received room update:', payload);
+          if (payload.new) {
+            const room = payload.new;
+            if (room.player1_answer !== null && room.player2_answer !== null) {
+              setPlayer1Answer(Number(room.player1_answer));
+              setPlayer2Answer(Number(room.player2_answer));
+              const calculatedScore = calculateScore(
+                Number(room.player1_answer),
+                Number(room.player2_answer)
+              );
+              setFinalScore(calculatedScore);
+              setIsAnalyzing(false);
+              setShowScore(true);
+              setTimeout(() => {
+                confetti({
+                  particleCount: 100,
+                  spread: 70,
+                  origin: { y: 0.6 }
+                });
+              }, 500);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    // Poll as backup
+    const pollInterval = setInterval(checkRoomState, 2000);
 
     return () => {
-      console.log('Cleaning up subscription');
       channel.unsubscribe();
       clearInterval(pollInterval);
     };

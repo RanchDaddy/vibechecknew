@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,12 +15,6 @@ export const SliderGame = ({ roomCode, onComplete }: SliderGameProps) => {
   const [sliderValue, setSliderValue] = useState([50]);
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
-  const calculateScore = (answer1: number, answer2: number) => {
-    const difference = Math.abs(answer1 - answer2);
-    const maxDifference = 100;
-    return Math.round(100 * (1 - difference / maxDifference));
-  };
-
   const handleSubmit = async () => {
     try {
       const { data: room } = await supabase
@@ -34,15 +28,19 @@ export const SliderGame = ({ roomCode, onComplete }: SliderGameProps) => {
       const isPlayer1 = room.player1_id === (await supabase.auth.getUser()).data.user?.id;
       const updateField = isPlayer1 ? 'player1_answer' : 'player2_answer';
 
-      await supabase
+      const { error } = await supabase
         .from('rooms')
         .update({ [updateField]: sliderValue[0] })
         .eq('code', roomCode);
 
-      // Immediately transition to results screen with a temporary score of 0
-      // The actual score will be updated when both players have submitted
-      onComplete(0);
+      if (error) {
+        console.error('Error updating room:', error);
+        return;
+      }
+
+      console.log('Successfully submitted answer');
       setHasSubmitted(true);
+      onComplete(0);
     } catch (error) {
       console.error('Error submitting answer:', error);
     }
