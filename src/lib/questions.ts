@@ -1,47 +1,76 @@
 export const questions = [
   {
-    question: "What's your ideal way to spend a weekend together?",
+    question: "Which house would you most want to live in together?",
+    type: "image",
     options: [
-      "Exploring new places and adventures",
-      "Relaxing at home with movies",
-      "Social activities with friends",
-      "Pursuing separate hobbies"
+      {
+        image: "/placeholder.svg",
+        text: "Modern Minimalist Glass House"
+      },
+      {
+        image: "/placeholder.svg",
+        text: "Cozy Cottage in the Woods"
+      },
+      {
+        image: "/placeholder.svg",
+        text: "Beach House with Ocean Views"
+      },
+      {
+        image: "/placeholder.svg",
+        text: "Urban Penthouse Apartment"
+      }
     ]
   },
   {
-    question: "How do you prefer to handle disagreements?",
+    question: "What color smells the best?",
+    type: "image",
     options: [
-      "Talk it out immediately",
-      "Take time to cool off first",
-      "Seek compromise",
-      "Ask for outside perspective"
+      {
+        image: "/placeholder.svg",
+        text: "Deep Purple (like lavender)"
+      },
+      {
+        image: "/placeholder.svg",
+        text: "Bright Yellow (like lemons)"
+      },
+      {
+        image: "/placeholder.svg",
+        text: "Forest Green (like pine)"
+      },
+      {
+        image: "/placeholder.svg",
+        text: "Ocean Blue (like sea breeze)"
+      }
     ]
   },
   {
-    question: "What's your love language?",
+    question: "If you were both reincarnated as kitchen appliances, what would you be?",
+    type: "text",
     options: [
-      "Quality Time",
-      "Physical Touch",
-      "Words of Affirmation",
-      "Acts of Service"
+      "Toaster and Coffee Maker - Hot and Essential",
+      "Blender and Food Processor - Versatile and Powerful",
+      "Fridge and Oven - Opposites Attract",
+      "Microwave and Dishwasher - Quick and Practical"
     ]
   },
   {
-    question: "How do you envision your future together?",
+    question: "What's your ideal apocalypse survival plan as a couple?",
+    type: "text",
     options: [
-      "Traditional and structured",
-      "Adventurous and spontaneous",
-      "Balanced and flexible",
-      "Independent but connected"
+      "Convert a bunker into a cozy love nest",
+      "Start a sustainable farm in the wilderness",
+      "Join a nomadic group of survivors",
+      "Take over an abandoned theme park"
     ]
   },
   {
-    question: "What's most important in your relationship?",
+    question: "If your relationship was a weird internet meme, which would it be?",
+    type: "text",
     options: [
-      "Trust and honesty",
-      "Communication",
-      "Shared values",
-      "Individual growth"
+      "Dancing Baby - Old school but gold",
+      "Nyan Cat - Colorful and unstoppable",
+      "Doge - Much love, very relationship",
+      "This Is Fine Dog - Chaos but still happy"
     ]
   }
 ];

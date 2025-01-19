@@ -20,6 +20,7 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isWaiting, setIsWaiting] = useState(false);
   const [isSynced, setIsSynced] = useState(false);
+  const [matchingAnswers, setMatchingAnswers] = useState(0);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -39,17 +40,13 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
           const newRoom = payload.new as Room;
           if (!newRoom) return;
 
-          // Update current question if it changed and is not null
-          if (typeof newRoom.current_question === 'number' && newRoom.current_question !== currentQuestion) {
-            setCurrentQuestion(newRoom.current_question);
-            setSelectedAnswer(null);
-            setIsWaiting(false);
-          }
-
-          // Check if both players have answered
           if (newRoom.player1_answer && newRoom.player2_answer) {
+            // Check if answers match and update score
+            if (newRoom.player1_answer === newRoom.player2_answer) {
+              setMatchingAnswers(prev => prev + 1);
+            }
+
             if (currentQuestion < questions.length - 1) {
-              // Move to next question
               const updateRoom = async () => {
                 const { error } = await supabase
                   .from('rooms')
@@ -70,10 +67,17 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
               };
               updateRoom();
             } else {
-              // Quiz complete
-              const score = Math.floor(Math.random() * 41) + 60;
+              // Calculate final score based on matching answers
+              const score = Math.round((matchingAnswers / questions.length) * 100);
               onComplete(score);
             }
+          }
+
+          // Update current question if it changed and is not null
+          if (typeof newRoom.current_question === 'number' && newRoom.current_question !== currentQuestion) {
+            setCurrentQuestion(newRoom.current_question);
+            setSelectedAnswer(null);
+            setIsWaiting(false);
           }
         }
       )
@@ -82,7 +86,7 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [roomCode, currentQuestion, onComplete, isSynced, toast]);
+  }, [roomCode, currentQuestion, onComplete, isSynced, toast, matchingAnswers]);
 
   const handleAnswer = async (answer: string) => {
     if (isWaiting) return;
@@ -91,7 +95,6 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
     setIsWaiting(true);
 
     try {
-      // Get current room state to determine which player we are
       const { data: room } = await supabase
         .from('rooms')
         .select('*')
@@ -100,7 +103,6 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
 
       if (!room) throw new Error('Room not found');
 
-      // Determine if we're player 1 or 2 based on who answered first
       const isPlayer1 = !room.player1_answer;
       
       const { error } = await supabase
@@ -126,6 +128,8 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
     return <SyncScreen roomCode={roomCode} onSynced={() => setIsSynced(true)} />;
   }
 
+  const currentQuestionData = questions[currentQuestion];
+  
   return (
     <div className="max-w-2xl mx-auto p-6">
       <QuizProgress 
@@ -134,11 +138,12 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
       />
       
       <QuizQuestion
-        question={questions[currentQuestion].question}
-        options={questions[currentQuestion].options}
+        question={currentQuestionData.question}
+        options={currentQuestionData.options}
         selectedAnswer={selectedAnswer}
         isWaiting={isWaiting}
         onAnswerSelect={handleAnswer}
+        type={currentQuestionData.type}
       />
     </div>
   );
