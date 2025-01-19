@@ -4,6 +4,9 @@ import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
 import confetti from 'canvas-confetti';
 import { Skeleton } from "@/components/ui/skeleton";
+import { Database } from '@/integrations/supabase/types';
+
+type Room = Database['public']['Tables']['rooms']['Row'];
 
 interface SliderResultsProps {
   score: number;
@@ -24,6 +27,33 @@ export const SliderResults = ({ score, roomCode, onRestart }: SliderResultsProps
     return Math.round(100 * (1 - difference / maxDifference));
   };
 
+  const handleRoomUpdate = (room: Room | null) => {
+    if (!room) return;
+    
+    console.log('Processing room update:', room);
+    
+    if (room.player1_answer !== null && room.player2_answer !== null) {
+      const p1Answer = Number(room.player1_answer);
+      const p2Answer = Number(room.player2_answer);
+      
+      setPlayer1Answer(p1Answer);
+      setPlayer2Answer(p2Answer);
+      
+      const calculatedScore = calculateScore(p1Answer, p2Answer);
+      setFinalScore(calculatedScore);
+      setIsAnalyzing(false);
+      setShowScore(true);
+      
+      setTimeout(() => {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      }, 500);
+    }
+  };
+
   useEffect(() => {
     console.log('Setting up room monitoring for:', roomCode);
     
@@ -35,26 +65,7 @@ export const SliderResults = ({ score, roomCode, onRestart }: SliderResultsProps
         .single();
 
       console.log('Current room state:', room);
-      
-      if (room && room.player1_answer !== null && room.player2_answer !== null) {
-        console.log('Both answers present:', room.player1_answer, room.player2_answer);
-        setPlayer1Answer(Number(room.player1_answer));
-        setPlayer2Answer(Number(room.player2_answer));
-        const calculatedScore = calculateScore(
-          Number(room.player1_answer),
-          Number(room.player2_answer)
-        );
-        setFinalScore(calculatedScore);
-        setIsAnalyzing(false);
-        setShowScore(true);
-        setTimeout(() => {
-          confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 }
-          });
-        }, 500);
-      }
+      handleRoomUpdate(room);
     };
 
     // Check initial state
@@ -73,26 +84,8 @@ export const SliderResults = ({ score, roomCode, onRestart }: SliderResultsProps
         },
         (payload) => {
           console.log('Received room update:', payload);
-          if (payload.new) {
-            const room = payload.new;
-            if (room.player1_answer !== null && room.player2_answer !== null) {
-              setPlayer1Answer(Number(room.player1_answer));
-              setPlayer2Answer(Number(room.player2_answer));
-              const calculatedScore = calculateScore(
-                Number(room.player1_answer),
-                Number(room.player2_answer)
-              );
-              setFinalScore(calculatedScore);
-              setIsAnalyzing(false);
-              setShowScore(true);
-              setTimeout(() => {
-                confetti({
-                  particleCount: 100,
-                  spread: 70,
-                  origin: { y: 0.6 }
-                });
-              }, 500);
-            }
+          if (payload.new && typeof payload.new === 'object') {
+            handleRoomUpdate(payload.new as Room);
           }
         }
       )
