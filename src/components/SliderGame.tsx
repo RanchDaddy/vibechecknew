@@ -41,6 +41,26 @@ export const SliderGame = ({ roomCode, onComplete }: SliderGameProps) => {
       )
       .subscribe();
 
+    // Check initial state in case both answers are already submitted
+    const checkInitialState = async () => {
+      const { data: room } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('code', roomCode)
+        .single();
+
+      if (room && room.player1_answer !== null && room.player2_answer !== null) {
+        const score = calculateScore(
+          Number(room.player1_answer),
+          Number(room.player2_answer)
+        );
+        setBothSubmitted(true);
+        setTimeout(() => onComplete(score), 1000);
+      }
+    };
+
+    checkInitialState();
+
     return () => {
       supabase.removeChannel(channel);
     };
