@@ -1,4 +1,10 @@
-export const questions = [
+interface Question {
+  question: string;
+  type: "image" | "text";
+  options: Array<string | { image: string; text: string }>;
+}
+
+export const questions: Question[] = [
   {
     question: "Which house would you most want to live in together?",
     type: "image",
