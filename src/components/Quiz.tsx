@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { questions } from "@/lib/questions";
 import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { Database } from '@/integrations/supabase/types';
+import { SyncScreen } from './SyncScreen';
 
 interface QuizProps {
   roomCode: string;
@@ -18,9 +19,12 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isWaiting, setIsWaiting] = useState(false);
+  const [isSynced, setIsSynced] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
+    if (!isSynced) return;
+
     const channel = supabase
       .channel('room_updates')
       .on(
@@ -32,20 +36,17 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
           filter: `code=eq.${roomCode}`,
         },
         (payload: RealtimePostgresChangesPayload<Room>) => {
-          // Ensure payload.new exists and has the expected properties
           if (
             payload.new && 
             typeof payload.new.player1_answer === 'string' && 
             typeof payload.new.player2_answer === 'string'
           ) {
             setIsWaiting(false);
-            // Move to next question or complete
             if (currentQuestion < questions.length - 1) {
               setCurrentQuestion(prev => prev + 1);
               setSelectedAnswer(null);
             } else {
-              // Calculate final score
-              const score = Math.floor(Math.random() * 41) + 60; // Random score between 60-100
+              const score = Math.floor(Math.random() * 41) + 60;
               onComplete(score);
             }
           }
@@ -56,7 +57,7 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [roomCode, currentQuestion, onComplete]);
+  }, [roomCode, currentQuestion, onComplete, isSynced]);
 
   const handleAnswer = async (answer: string) => {
     setSelectedAnswer(answer);
@@ -81,6 +82,10 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
       setIsWaiting(false);
     }
   };
+
+  if (!isSynced) {
+    return <SyncScreen roomCode={roomCode} onSynced={() => setIsSynced(true)} />;
+  }
 
   return (
     <div className="max-w-2xl mx-auto p-6">
