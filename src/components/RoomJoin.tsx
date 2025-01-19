@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -10,16 +9,50 @@ interface RoomJoinProps {
 }
 
 export const RoomJoin = ({ onJoinRoom }: RoomJoinProps) => {
-  const [roomCode, setRoomCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const currentUrl = window.location.href;
+  const [roomCode, setRoomCode] = useState('');
   const { toast } = useToast();
+
+  // Generate a random room code on component mount
+  useEffect(() => {
+    const generateRoomCode = () => {
+      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+      setRoomCode(code);
+      createRoom(code);
+    };
+
+    generateRoomCode();
+  }, []);
+
+  const createRoom = async (code: string) => {
+    try {
+      const { error: createError } = await supabase
+        .from('rooms')
+        .insert([
+          {
+            code: code,
+            player1_id: crypto.randomUUID(),
+            current_question: 0,
+            status: 'waiting'
+          }
+        ]);
+
+      if (createError) throw createError;
+    } catch (error) {
+      console.error('Error creating room:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create room",
+        variant: "destructive"
+      });
+    }
+  };
 
   const handleJoinRoom = async () => {
     if (!roomCode.trim()) {
       toast({
         title: "Error",
-        description: "Please enter a room code",
+        description: "Invalid room code",
         variant: "destructive"
       });
       return;
@@ -27,7 +60,6 @@ export const RoomJoin = ({ onJoinRoom }: RoomJoinProps) => {
 
     setIsLoading(true);
     try {
-      // First check if room exists
       const { data: existingRoom } = await supabase
         .from('rooms')
         .select('*')
@@ -35,7 +67,6 @@ export const RoomJoin = ({ onJoinRoom }: RoomJoinProps) => {
         .single();
 
       if (existingRoom) {
-        // Room exists, try to join as player 2 if spot is available
         if (!existingRoom.player2_id) {
           const { error: updateError } = await supabase
             .from('rooms')
@@ -43,34 +74,13 @@ export const RoomJoin = ({ onJoinRoom }: RoomJoinProps) => {
             .eq('code', roomCode);
 
           if (updateError) throw updateError;
-        } else if (!existingRoom.player1_id) {
-          // In case player2 somehow got set but player1 didn't
-          const { error: updateError } = await supabase
-            .from('rooms')
-            .update({ player1_id: crypto.randomUUID() })
-            .eq('code', roomCode);
-
-          if (updateError) throw updateError;
+          onJoinRoom(roomCode);
         } else {
           throw new Error('Room is full');
         }
       } else {
-        // Create new room as player 1
-        const { error: createError } = await supabase
-          .from('rooms')
-          .insert([
-            {
-              code: roomCode,
-              player1_id: crypto.randomUUID(),
-              current_question: 0,
-              status: 'waiting'
-            }
-          ]);
-
-        if (createError) throw createError;
+        throw new Error('Room not found');
       }
-
-      onJoinRoom(roomCode);
     } catch (error) {
       console.error('Error joining room:', error);
       toast({
@@ -83,34 +93,36 @@ export const RoomJoin = ({ onJoinRoom }: RoomJoinProps) => {
     }
   };
 
+  // Create the URL with the room code as a query parameter
+  const qrUrl = new URL(window.location.href);
+  qrUrl.searchParams.set('room', roomCode);
+
+  // Check if we're joining via QR code
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const roomFromQR = params.get('room');
+    
+    if (roomFromQR) {
+      setRoomCode(roomFromQR);
+      handleJoinRoom();
+    }
+  }, []);
+
   return (
     <div className="flex flex-col items-center space-y-8 p-8">
       <div className="text-center space-y-2">
         <h1 className="text-4xl font-bold text-primary">Compatibility Test</h1>
         <p className="text-lg text-gray-600">
-          Have your partner scan the QR code and type in the same room code to begin
+          Have your partner scan the QR code to join the room
         </p>
       </div>
       
       <div className="bg-white p-4 rounded-lg shadow-lg">
-        <QRCodeSVG value={currentUrl} size={200} />
+        <QRCodeSVG value={qrUrl.toString()} size={200} />
       </div>
 
-      <div className="w-full max-w-xs space-y-4">
-        <Input
-          type="text"
-          placeholder="Enter room code"
-          value={roomCode}
-          onChange={(e) => setRoomCode(e.target.value)}
-          className="text-center text-xl"
-        />
-        <Button 
-          className="w-full bg-primary hover:bg-primary/90"
-          onClick={handleJoinRoom}
-          disabled={isLoading}
-        >
-          {isLoading ? "Joining..." : "Join Room"}
-        </Button>
+      <div className="text-center text-sm text-gray-500">
+        Room Code: {roomCode}
       </div>
     </div>
   );
