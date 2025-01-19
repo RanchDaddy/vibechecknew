@@ -32,8 +32,12 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
           filter: `code=eq.${roomCode}`,
         },
         (payload: RealtimePostgresChangesPayload<Room>) => {
-          const room = payload.new;
-          if (room && room.player1_answer && room.player2_answer) {
+          // Ensure payload.new exists and has the expected properties
+          if (
+            payload.new && 
+            typeof payload.new.player1_answer === 'string' && 
+            typeof payload.new.player2_answer === 'string'
+          ) {
             setIsWaiting(false);
             // Move to next question or complete
             if (currentQuestion < questions.length - 1) {
