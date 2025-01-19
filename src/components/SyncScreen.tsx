@@ -28,10 +28,13 @@ export const SyncScreen = ({ roomCode, onSynced }: SyncScreenProps) => {
           filter: `code=eq.${roomCode}`,
         },
         (payload: RealtimePostgresChangesPayload<Room>) => {
-          const newRoom = payload.new;
-          if (newRoom && newRoom.player1_id && newRoom.player2_id) {
-            setIsSynced(true);
-            setTimeout(() => setShowButton(true), 2000); // Show button after animation
+          const newRoom = payload.new as Room;
+          // Add null check before accessing properties
+          if (newRoom && typeof newRoom === 'object' && 'player1_id' in newRoom && 'player2_id' in newRoom) {
+            if (newRoom.player1_id && newRoom.player2_id) {
+              setIsSynced(true);
+              setTimeout(() => setShowButton(true), 2000); // Show button after animation
+            }
           }
         }
       )
