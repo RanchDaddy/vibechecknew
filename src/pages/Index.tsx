@@ -1,19 +1,24 @@
 import { useState } from 'react';
 import { RoomJoin } from '@/components/RoomJoin';
-import { Quiz } from '@/components/Quiz';
-import { Results } from '@/components/Results';
+import { SyncScreen } from '@/components/SyncScreen';
+import { SliderGame } from '@/components/SliderGame';
+import { SliderResults } from '@/components/SliderResults';
 
 const Index = () => {
-  const [stage, setStage] = useState<'join' | 'quiz' | 'results'>('join');
+  const [stage, setStage] = useState<'join' | 'sync' | 'game' | 'results'>('join');
   const [roomCode, setRoomCode] = useState('');
   const [score, setScore] = useState(0);
 
   const handleJoinRoom = (code: string) => {
     setRoomCode(code);
-    setStage('quiz');
+    setStage('sync');
   };
 
-  const handleQuizComplete = (finalScore: number) => {
+  const handleSynced = () => {
+    setStage('game');
+  };
+
+  const handleGameComplete = (finalScore: number) => {
     setScore(finalScore);
     setStage('results');
   };
@@ -27,8 +32,15 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {stage === 'join' && <RoomJoin onJoinRoom={handleJoinRoom} />}
-      {stage === 'quiz' && <Quiz roomCode={roomCode} onComplete={handleQuizComplete} />}
-      {stage === 'results' && <Results score={score} onRestart={handleRestart} />}
+      {stage === 'sync' && <SyncScreen roomCode={roomCode} onSynced={handleSynced} />}
+      {stage === 'game' && <SliderGame roomCode={roomCode} onComplete={handleGameComplete} />}
+      {stage === 'results' && (
+        <SliderResults 
+          score={score} 
+          roomCode={roomCode}
+          onRestart={handleRestart}
+        />
+      )}
     </div>
   );
 };

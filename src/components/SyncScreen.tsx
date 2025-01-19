@@ -87,7 +87,7 @@ export const SyncScreen = ({ roomCode, onSynced }: SyncScreenProps) => {
           onClick={onSynced}
           className="bg-primary hover:bg-primary/90 animate-fade-in"
         >
-          Begin Quiz
+          Start Game
         </Button>
       )}
     </div>
