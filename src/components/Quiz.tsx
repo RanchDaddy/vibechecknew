@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { questions } from "@/lib/questions";
 import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { Database } from '@/integrations/supabase/types';
 import { SyncScreen } from './SyncScreen';
+import { QuizProgress } from './QuizProgress';
+import { QuizQuestion } from './QuizQuestion';
 
 interface QuizProps {
   roomCode: string;
@@ -90,35 +90,18 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-primary mb-2">Question {currentQuestion + 1}</h2>
-        <p className="text-gray-600">Room Code: {roomCode}</p>
-      </div>
-
-      <Card className="p-6">
-        <h3 className="text-xl mb-6">{questions[currentQuestion].question}</h3>
-        
-        <div className="space-y-4">
-          {questions[currentQuestion].options.map((option, index) => (
-            <Button
-              key={index}
-              onClick={() => handleAnswer(option)}
-              disabled={isWaiting || selectedAnswer !== null}
-              className={`w-full justify-start text-left ${
-                selectedAnswer === option ? 'bg-primary text-white' : 'bg-secondary'
-              }`}
-            >
-              {option}
-            </Button>
-          ))}
-        </div>
-
-        {isWaiting && (
-          <p className="text-center mt-6 text-gray-600 animate-pulse">
-            Waiting for partner's answer...
-          </p>
-        )}
-      </Card>
+      <QuizProgress 
+        currentQuestion={currentQuestion}
+        roomCode={roomCode}
+      />
+      
+      <QuizQuestion
+        question={questions[currentQuestion].question}
+        options={questions[currentQuestion].options}
+        selectedAnswer={selectedAnswer}
+        isWaiting={isWaiting}
+        onAnswerSelect={handleAnswer}
+      />
     </div>
   );
 };
