@@ -36,10 +36,11 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
           filter: `code=eq.${roomCode}`,
         },
         (payload: RealtimePostgresChangesPayload<Room>) => {
+          const newRoom = payload.new as Room;
           if (
-            payload.new && 
-            typeof payload.new.player1_answer === 'string' && 
-            typeof payload.new.player2_answer === 'string'
+            newRoom && 
+            newRoom.player1_answer !== null && 
+            newRoom.player2_answer !== null
           ) {
             setIsWaiting(false);
             if (currentQuestion < questions.length - 1) {

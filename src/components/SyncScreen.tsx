@@ -27,7 +27,8 @@ export const SyncScreen = ({ roomCode, onSynced }: SyncScreenProps) => {
           filter: `code=eq.${roomCode}`,
         },
         (payload: { new: Room }) => {
-          if (payload.new && payload.new.player1_id && payload.new.player2_id) {
+          const newRoom = payload.new;
+          if (newRoom && newRoom.player1_id && newRoom.player2_id) {
             setIsSynced(true);
             setTimeout(() => setShowButton(true), 2000); // Show button after animation
           }
