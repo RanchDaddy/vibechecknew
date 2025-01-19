@@ -36,12 +36,12 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
           filter: `code=eq.${roomCode}`,
         },
         (payload: RealtimePostgresChangesPayload<Room>) => {
-          const newRoom = payload.new;
+          const newRoom = payload.new as Room;
           if (!newRoom) return;
 
-          // Update current question if it changed
-          if (newRoom.current_question !== currentQuestion) {
-            setCurrentQuestion(newRoom.current_question || 0);
+          // Update current question if it changed and is not null
+          if (typeof newRoom.current_question === 'number' && newRoom.current_question !== currentQuestion) {
+            setCurrentQuestion(newRoom.current_question);
             setSelectedAnswer(null);
             setIsWaiting(false);
           }

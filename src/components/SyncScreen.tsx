@@ -44,7 +44,7 @@ export const SyncScreen = ({ roomCode, onSynced }: SyncScreenProps) => {
           filter: `code=eq.${roomCode}`,
         },
         (payload: RealtimePostgresChangesPayload<Room>) => {
-          const newRoom = payload.new;
+          const newRoom = payload.new as Room;
           if (newRoom && newRoom.player1_id && newRoom.player2_id) {
             setIsSynced(true);
             setTimeout(() => setShowButton(true), 2000);
