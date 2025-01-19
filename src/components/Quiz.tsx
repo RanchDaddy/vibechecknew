@@ -37,8 +37,10 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
         },
         (payload: RealtimePostgresChangesPayload<Room>) => {
           const newRoom = payload.new as Room;
+          if (!newRoom) return;
+
+          // Check if both players have answered
           if (
-            newRoom && 
             newRoom.player1_answer !== null && 
             newRoom.player2_answer !== null
           ) {
@@ -46,6 +48,27 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
             if (currentQuestion < questions.length - 1) {
               setCurrentQuestion(prev => prev + 1);
               setSelectedAnswer(null);
+
+              // Reset answers for next question
+              const updateRoom = async () => {
+                const { error } = await supabase
+                  .from('rooms')
+                  .update({
+                    current_question: currentQuestion + 1,
+                    player1_answer: null,
+                    player2_answer: null
+                  })
+                  .eq('code', roomCode);
+
+                if (error) {
+                  toast({
+                    title: "Error",
+                    description: "Failed to update room state",
+                    variant: "destructive"
+                  });
+                }
+              };
+              updateRoom();
             } else {
               const score = Math.floor(Math.random() * 41) + 60;
               onComplete(score);
@@ -58,7 +81,7 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [roomCode, currentQuestion, onComplete, isSynced]);
+  }, [roomCode, currentQuestion, onComplete, isSynced, toast]);
 
   const handleAnswer = async (answer: string) => {
     setSelectedAnswer(answer);

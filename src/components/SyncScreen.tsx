@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from '@/integrations/supabase/types';
 import { Heart } from 'lucide-react';
+import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 type Room = Database['public']['Tables']['rooms']['Row'];
 
@@ -26,7 +27,7 @@ export const SyncScreen = ({ roomCode, onSynced }: SyncScreenProps) => {
           table: 'rooms',
           filter: `code=eq.${roomCode}`,
         },
-        (payload: { new: Room }) => {
+        (payload: RealtimePostgresChangesPayload<Room>) => {
           const newRoom = payload.new;
           if (newRoom && newRoom.player1_id && newRoom.player2_id) {
             setIsSynced(true);
