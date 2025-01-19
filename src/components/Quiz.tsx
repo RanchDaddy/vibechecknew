@@ -4,11 +4,15 @@ import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { questions } from "@/lib/questions";
+import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { Database } from '@/integrations/supabase/types';
 
 interface QuizProps {
   roomCode: string;
   onComplete: (score: number) => void;
 }
+
+type Room = Database['public']['Tables']['rooms']['Row'];
 
 export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -27,9 +31,9 @@ export const Quiz = ({ roomCode, onComplete }: QuizProps) => {
           table: 'rooms',
           filter: `code=eq.${roomCode}`,
         },
-        (payload) => {
+        (payload: RealtimePostgresChangesPayload<Room>) => {
           const room = payload.new;
-          if (room.player1_answer && room.player2_answer) {
+          if (room && room.player1_answer && room.player2_answer) {
             setIsWaiting(false);
             // Move to next question or complete
             if (currentQuestion < questions.length - 1) {
