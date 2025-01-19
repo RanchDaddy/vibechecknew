@@ -1,12 +1,34 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from 'react';
+import { RoomJoin } from '@/components/RoomJoin';
+import { Quiz } from '@/components/Quiz';
+import { Results } from '@/components/Results';
 
 const Index = () => {
+  const [stage, setStage] = useState<'join' | 'quiz' | 'results'>('join');
+  const [roomCode, setRoomCode] = useState('');
+  const [score, setScore] = useState(0);
+
+  const handleJoinRoom = (code: string) => {
+    setRoomCode(code);
+    setStage('quiz');
+  };
+
+  const handleQuizComplete = (finalScore: number) => {
+    setScore(finalScore);
+    setStage('results');
+  };
+
+  const handleRestart = () => {
+    setStage('join');
+    setRoomCode('');
+    setScore(0);
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      {stage === 'join' && <RoomJoin onJoinRoom={handleJoinRoom} />}
+      {stage === 'quiz' && <Quiz roomCode={roomCode} onComplete={handleQuizComplete} />}
+      {stage === 'results' && <Results score={score} onRestart={handleRestart} />}
     </div>
   );
 };
