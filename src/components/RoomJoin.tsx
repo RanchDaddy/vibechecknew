@@ -3,10 +3,13 @@ import { Button } from "@/components/ui/button";
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Database } from '@/integrations/supabase/types';
 
 interface RoomJoinProps {
   onJoinRoom: (code: string) => void;
 }
+
+type Room = Database['public']['Tables']['rooms']['Row'];
 
 export const RoomJoin = ({ onJoinRoom }: RoomJoinProps) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -23,6 +26,35 @@ export const RoomJoin = ({ onJoinRoom }: RoomJoinProps) => {
 
     generateRoomCode();
   }, []);
+
+  // Subscribe to room updates
+  useEffect(() => {
+    if (!roomCode) return;
+
+    const channel = supabase
+      .channel('room_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'rooms',
+          filter: `code=eq.${roomCode}`,
+        },
+        (payload) => {
+          const updatedRoom = payload.new as Room;
+          if (updatedRoom && updatedRoom.player2_id) {
+            console.log('Second player joined, transitioning to sync screen');
+            onJoinRoom(roomCode);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roomCode, onJoinRoom]);
 
   const createRoom = async (code: string) => {
     try {
