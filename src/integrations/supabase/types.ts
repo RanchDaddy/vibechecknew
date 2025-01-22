@@ -9,66 +9,7 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      calendar_events: {
-        Row: {
-          created_at: string
-          event_date: string
-          event_time: string
-          id: string
-          title: string
-        }
-        Insert: {
-          created_at?: string
-          event_date: string
-          event_time: string
-          id?: string
-          title: string
-        }
-        Update: {
-          created_at?: string
-          event_date?: string
-          event_time?: string
-          id?: string
-          title?: string
-        }
-        Relationships: []
-      }
-      rooms: {
-        Row: {
-          code: string
-          created_at: string
-          current_question: number | null
-          id: string
-          player1_answer: string | null
-          player1_id: string | null
-          player2_answer: string | null
-          player2_id: string | null
-          status: string
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          current_question?: number | null
-          id?: string
-          player1_answer?: string | null
-          player1_id?: string | null
-          player2_answer?: string | null
-          player2_id?: string | null
-          status?: string
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          current_question?: number | null
-          id?: string
-          player1_answer?: string | null
-          player1_id?: string | null
-          player2_answer?: string | null
-          player2_id?: string | null
-          status?: string
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Views: {
       [_ in never]: never
